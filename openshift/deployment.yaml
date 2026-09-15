@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azure-upload-react-ui
+  labels:
+    app: azure-upload-react-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: azure-upload-react-ui
+  template:
+    metadata:
+      labels:
+        app: azure-upload-react-ui
+    spec:
+      containers:
+        - name: ui
+          image: IMAGE_PLACEHOLDER
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 4444
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

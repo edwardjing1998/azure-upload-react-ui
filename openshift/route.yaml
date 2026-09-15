@@ -1,0 +1,15 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: azure-upload-react-ui
+  labels:
+    app: azure-upload-react-ui
+spec:
+  to:
+    kind: Service
+    name: azure-upload-react-ui
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
