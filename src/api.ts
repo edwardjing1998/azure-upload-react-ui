@@ -6,18 +6,30 @@ import type {
 const TOKEN_KEY = "security_sample_access_token";
 
 const UPLOAD_API_URL = (
-  import.meta.env.VITE_UPLOAD_API_URL ??
-  import.meta.env.VITE_API_URL ??
-  ""
-).replace(/\/$/, "");
+  import.meta.env.VITE_UPLOAD_API_URL ?? ""
+)
+  .trim()
+  .replace(/\/+$/, "");
 
-const DEFAULT_AUTH_API_URL =
-  "https://security-ui-chat8gpt20180625-dev.apps.rm1.0a51.p1.openshiftapps.com";
+if (!UPLOAD_API_URL) {
+  throw new Error(
+    "VITE_UPLOAD_API_URL is required. " +
+      "Configure it before building the application.",
+  );
+}
 
 const AUTH_API_URL = (
-  import.meta.env.VITE_AUTH_API_URL ??
-  DEFAULT_AUTH_API_URL
-).replace(/\/$/, "");
+  import.meta.env.VITE_AUTH_API_URL ?? ""
+)
+  .trim()
+  .replace(/\/+$/, "");
+
+if (!AUTH_API_URL) {
+  throw new Error(
+    "VITE_AUTH_API_URL is required. " +
+      "Configure it before building the application.",
+  );
+}
 
 export interface AuthUser {
   id: number | string;
