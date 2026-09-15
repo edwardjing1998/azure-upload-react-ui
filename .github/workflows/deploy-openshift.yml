@@ -53,6 +53,17 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
 
+      # oc-login requires the oc executable to be installed first.
+      - name: Install OpenShift CLI
+        uses: redhat-actions/openshift-tools-installer@v1
+        with:
+          oc: latest
+
+      - name: Verify OpenShift CLI
+        run: |
+          which oc
+          oc version --client
+
       - name: Log in to OpenShift
         uses: redhat-actions/oc-login@v2
         with:
@@ -64,37 +75,60 @@ jobs:
       - name: Confirm OpenShift context
         run: |
           oc whoami
+          oc whoami --show-server
           oc project
 
-      - name: Apply Service and Route
+      - name: Apply OpenShift Service and Route
         run: |
-          oc apply -f openshift/service.yaml
-          oc apply -f openshift/route.yaml
+          oc apply \
+            -f openshift/service.yaml \
+            -n "${OPENSHIFT_NAMESPACE}"
 
-      - name: Apply Deployment
+          oc apply \
+            -f openshift/route.yaml \
+            -n "${OPENSHIFT_NAMESPACE}"
+
+      - name: Apply OpenShift Deployment
         run: |
           sed \
             "s|IMAGE_PLACEHOLDER|${CONTAINER_IMAGE}:${IMAGE_TAG}|g" \
             openshift/deployment.yaml |
-            oc apply -f -
+            oc apply \
+              -n "${OPENSHIFT_NAMESPACE}" \
+              -f -
 
-      - name: Wait for rollout
+      - name: Wait for deployment rollout
         run: |
           oc rollout status \
             deployment/azure-upload-react-ui \
+            -n "${OPENSHIFT_NAMESPACE}" \
             --timeout=180s
 
       - name: Show deployed resources
+        if: always()
         run: |
-          oc get deployment azure-upload-react-ui
-          oc get pods -l app=azure-upload-react-ui
-          oc get service azure-upload-react-ui
-          oc get route azure-upload-react-ui
+          oc get deployment azure-upload-react-ui \
+            -n "${OPENSHIFT_NAMESPACE}" \
+            -o wide || true
+
+          oc get pods \
+            -n "${OPENSHIFT_NAMESPACE}" \
+            -l app=azure-upload-react-ui \
+            -o wide || true
+
+          oc get service azure-upload-react-ui \
+            -n "${OPENSHIFT_NAMESPACE}" \
+            -o wide || true
+
+          oc get route azure-upload-react-ui \
+            -n "${OPENSHIFT_NAMESPACE}" \
+            -o wide || true
 
       - name: Display application URL
         run: |
           UI_HOST="$(
             oc get route azure-upload-react-ui \
+              -n "${OPENSHIFT_NAMESPACE}" \
               -o jsonpath='{.spec.host}'
           )"
 
