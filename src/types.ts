@@ -19,7 +19,7 @@ export interface UploadedFile {
   relativePath: string;
   blobName: string;
   sizeBytes: number;
-  status: "COMPLETED" | "FAILED";
+  status: "UPLOADING" | "COMPLETED" | "FAILED";
   etag: string | null;
   errorMessage: string | null;
   retryCount: number;

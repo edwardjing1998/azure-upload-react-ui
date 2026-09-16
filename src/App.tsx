@@ -1,7 +1,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, authenticate, createSession, currentUser, tokenStore, uploadFile } from "./api";
+import { ApiError, authenticate, createSession, currentUser, listUploadedFiles, tokenStore, uploadFile } from "./api";
 import type { AuthUser } from "./api";
-import type { SelectedFile, UploadSession } from "./types";
+import type { SelectedFile, UploadedFile, UploadSession } from "./types";
 
 const CONCURRENCY_OPTIONS = [1, 2, 4, 6, 8];
 
@@ -99,7 +99,28 @@ function UploadWorkspace({ user, onLogout }: { user: AuthUser; onLogout: () => v
   const [creating, setCreating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [loadingUploadedFiles, setLoadingUploadedFiles] = useState(true);
   const aborters = useRef(new Map<string, () => void>());
+
+  async function refreshUploadedFiles() {
+    setLoadingUploadedFiles(true);
+    try {
+      setUploadedFiles(await listUploadedFiles());
+    } catch (error) {
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        onLogout();
+        return;
+      }
+      setMessage(error instanceof Error ? error.message : "Unable to load uploaded files");
+    } finally {
+      setLoadingUploadedFiles(false);
+    }
+  }
+
+  useEffect(() => {
+    void refreshUploadedFiles();
+  }, []);
 
   const totals = useMemo(() => {
     const bytes = files.reduce((sum, item) => sum + item.file.size, 0);
@@ -187,6 +208,7 @@ function UploadWorkspace({ user, onLogout }: { user: AuthUser; onLogout: () => v
         try {
           const result = await task.promise;
           updateFile(item.id, { state: "completed", progress: 100, result });
+          setUploadedFiles((current) => [result, ...current.filter((file) => file.fileId !== result.fileId)]);
         } catch (error) {
           updateFile(item.id, {
             state: "failed",
@@ -308,6 +330,17 @@ function UploadWorkspace({ user, onLogout }: { user: AuthUser; onLogout: () => v
         </div>
 
         {message && <div className="notice" role="status">{message}</div>}
+      </section>
+      <section className="review-card">
+        <div className="review-heading">
+          <div><p className="eyebrow">UPLOADED FILES</p><h2>Review your image records</h2><p>These records are loaded from <code>public.user_uploaded_files</code>.</p></div>
+          <button className="secondary-action" onClick={() => void refreshUploadedFiles()} disabled={loadingUploadedFiles}>{loadingUploadedFiles ? "Refreshing…" : "Refresh"}</button>
+        </div>
+        {loadingUploadedFiles ? <div className="empty">Loading uploaded files…</div> : uploadedFiles.length === 0 ? <div className="empty">No uploaded files found.</div> : (
+          <div className="review-table-wrap"><table className="review-table"><thead><tr><th>File</th><th>Session</th><th>Size</th><th>Status</th><th>Updated</th></tr></thead><tbody>
+            {uploadedFiles.map((file) => <tr key={file.fileId}><td><strong>{file.relativePath}</strong><small>{file.fileId}</small></td><td><code>{file.blobName.split("/")[0]}</code></td><td>{formatBytes(file.sizeBytes)}</td><td><span className={`review-status ${file.status.toLowerCase()}`}>{file.status}</span></td><td>{new Date(file.updatedAt).toLocaleString()}</td></tr>)}
+          </tbody></table></div>
+        )}
       </section>
       <footer>Files are sent directly to your Spring Boot API over HTTPS.</footer>
     </main>

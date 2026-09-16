@@ -261,6 +261,18 @@ export async function createSession(input: {
   return parseResponse<UploadSession>(response);
 }
 
+export async function listUploadedFiles(): Promise<UploadedFile[]> {
+  const response = await fetch(
+    `${UPLOAD_API_URL}/api/uploaded-files`,
+    {
+      method: "GET",
+      headers: requiredAuthHeaders(false),
+    },
+  );
+
+  return parseResponse<UploadedFile[]>(response);
+}
+
 export function uploadFile(
   sessionId: string,
   file: File,
